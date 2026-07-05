@@ -1,0 +1,14 @@
+{
+  "name": "com.immersive.audio",
+  "displayName": "Immersive Audio",
+  "version": "0.1.0",
+  "description": "Unity audio services and authoring primitives for Immersive packages.",
+  "author": {
+    "name": "Immersive Games"
+  },
+  "unity": "6000.5",
+  "unityRelease": "0f1",
+  "dependencies": {
+    "com.immersive.pooling": "0.2.0"
+  }
+}
