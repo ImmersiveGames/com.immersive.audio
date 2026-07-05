@@ -1,7 +1,7 @@
 {
   "name": "com.immersive.audio",
   "displayName": "Immersive Audio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unity audio services and authoring primitives for Immersive packages.",
   "author": {
     "name": "Immersive Games"
