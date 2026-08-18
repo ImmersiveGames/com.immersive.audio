@@ -150,6 +150,38 @@ Pooled SFX depends on `com.immersive.pooling` through explicit Unity composition
 
 By default, `AudioRuntimeHost` also ensures a package-owned persistent `AudioListener` through `AudioListenerRuntimeHost`. This makes listener availability independent from cameras. The persistent object is limited to listener ownership; playback services and game-specific BGM/SFX decisions remain scene/composition-owned.
 
+For applications that require BGM continuity while transient scenes are loaded or unloaded, the consuming project or framework adapter must compose the `AudioRuntimeHost` under an explicit lifetime that survives those scene changes. The package must not make that host persistent implicitly.
+
+## BGM Continuity Policy
+
+`AUDIO-F-RULE-002 - Sticky Confirmed BGM Presentation` defines the required continuity contract for BGM orchestration built on this package.
+
+The package owns physical BGM playback and transition behavior. It does not own Route, Activity, game-flow, or other framework lifecycle semantics. A consumer may publish higher-level BGM intentions, but those concepts must remain outside the audio package boundary.
+
+For a continuity-capable composition:
+
+- once a BGM cue is successfully playing, it remains the current presentation until an explicit request changes it or explicitly requests silence/stop;
+- absence of a new BGM request means `NoChange`; it must not be interpreted as silence, stop, clear, or fallback;
+- destruction or exit of the gameplay object, Route, Activity, or scene that originally caused the request must not by itself stop the confirmed BGM when the playback authority remains alive;
+- requesting the same already-confirmed cue must preserve playback without restart or other unnecessary provider mutation;
+- requesting a different cue must perform a controlled BGM transition rather than an abrupt stop caused only by owner or scene lifetime;
+- explicit silence/stop is the only semantic request that transitions an active BGM to silence;
+- when a consumer requires continuity across scene unloads, the playback authority that owns `AudioBgmService` and its `AudioSource` must outlive those transient scenes through explicit composition.
+
+These semantics distinguish three higher-level intentions even if the exact public API is defined by a later cut:
+
+```text
+Unspecified / No Request -> preserve current confirmed BGM
+Play(cue)                -> apply or transition to the requested cue
+Silence / Stop           -> transition explicitly to silence
+```
+
+`null`, missing authoring, owner exit, or absence of a higher-level binding must not be silently promoted to `Silence` by an adapter.
+
+### Current implementation limitation
+
+F4 `AudioBgmService` provides one dedicated `AudioSource`, direct `Play`/`Stop`, and basic fade in/out. It does not yet certify the full sticky continuity contract above, including seamless cue-to-cue transition behavior across transient scene lifetimes. This contract is therefore a required target for the next BGM continuity runtime cut and must be proven by QA before it is considered implemented.
+
 ## Mixer Policy
 
 F4 routing is resolved metadata only. Unity `AudioMixer` binding is intentionally deferred until a dedicated routing/mixer cut defines the public authoring language and failure behavior.
