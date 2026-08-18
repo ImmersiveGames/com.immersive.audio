@@ -88,6 +88,8 @@ It composes `AudioSettingsService`, `AudioRoutingResolver`, `AudioGlobalSfxServi
 
 By default, it also ensures one package-owned persistent `AudioListener`. This keeps listener availability independent from camera lifecycle, route scenes, activity roots, or UI scenes. The persistent listener object is named `ImmersiveAudioListener` and is retained across scene loads.
 
+If an application requires BGM to continue while gameplay or flow scenes are unloaded, place the `AudioRuntimeHost` under an explicit persistent/session lifetime owned by the consuming project or framework adapter. Do not rely on `AudioRuntimeHost` to call `DontDestroyOnLoad` for itself; it intentionally does not.
+
 For camera-orchestrated games, do not put `AudioListener` on gameplay cameras. Let `AudioRuntimeHost` own listener availability and keep camera orchestration visual-only unless a later spatial-audio policy explicitly changes that.
 
 ## 8. AudioListenerRuntimeHost
@@ -178,6 +180,35 @@ public sealed class ExampleBgmControls : MonoBehaviour
 }
 ```
 
+### BGM continuity contract
+
+For applications that orchestrate music across transient gameplay scenes, BGM is treated as a sticky confirmed presentation. Once a cue has been successfully established, absence of a later request does not mean stop or silence.
+
+The required semantics are:
+
+```text
+No new request -> keep the current confirmed BGM unchanged
+Same cue       -> keep playback unchanged; do not restart it
+Different cue  -> perform a controlled transition to the new cue
+Explicit stop  -> transition explicitly to silence
+```
+
+The object or scene that originally caused a BGM request does not own the lifetime of the resulting confirmed playback. If that object or scene exits while the playback authority remains alive, the BGM continues until a later explicit request changes it or requests silence.
+
+A higher-level consumer must therefore distinguish:
+
+- no BGM opinion / no request;
+- play this cue;
+- explicit silence/stop.
+
+Do not use a missing binding, owner exit, scene unload, or `null` higher-level declaration as an implicit request for silence.
+
+For scene-to-scene continuity, the `AudioRuntimeHost`, `AudioBgmService`, and dedicated BGM `AudioSource` must live under a composition lifetime that survives the transient scenes. The package does not create that persistent application/session owner automatically.
+
+### Current implementation limitation
+
+The current F4 `AudioBgmService` is still a basic one-source `Play`/`Stop` implementation with fade values. The full sticky continuity behavior above, especially controlled cue-to-cue transitions without abrupt interruption, is a required target for the next BGM continuity runtime cut and is not yet certified by QA.
+
 ## 12. Explicit Failures
 
 Playback returns `AudioPlaybackResult`. Do not ignore failed results.
@@ -213,18 +244,21 @@ Canonical flow:
 
 The builder also ensures generated audio clips and cue assignments. The separate repair menu is maintenance-only.
 
+The BGM continuity contract above requires an additional lifecycle regression that proves a persistent playback authority across transient scene unload/load and verifies no-request, same-cue, different-cue, and explicit-silence behavior. The existing F4 smoke does not by itself certify that contract.
+
 ## 14. Setup Checklist
 
 - Create an `AudioDefaultsAsset`.
-- Add an `AudioRuntimeHost` to the scene.
+- Add an `AudioRuntimeHost` to the scene or explicit persistent/session composition surface that should own playback.
 - Assign the defaults asset to the host.
+- If BGM must survive scene changes, ensure the host's composition lifetime outlives those transient scenes.
 - Leave `Ensure Persistent Listener` enabled unless the project has a stronger explicit listener owner.
 - Do not add `AudioListener` to route/activity cameras by default.
 - Create a direct `AudioSfxCueAsset`.
 - Assign an `AudioClip` to the cue.
 - Call `PlaySfx`.
 - Create an `AudioBgmCueAsset`.
-- Call `PlayBgm` and `StopBgm`.
+- Call `PlayBgm` and `StopBgm` only for explicit playback changes; absence of a new higher-level BGM request must not be translated into `StopBgm`.
 - For pooled SFX, create `PoolRuntimeHost`, `PoolDefinitionAsset`, and a prefab with `AudioSource`.
 - Set the SFX cue to `Pooled`.
 - Assign the cue's `PooledAudioSourcePool`.
@@ -237,6 +271,8 @@ The builder also ensures generated audio clips and cue assignments. The separate
 - Pooled cue without pool service: playback fails with missing pool service.
 - Pooled cue without pool definition: playback fails with missing pool definition.
 - Pooled prefab without `AudioSource`: playback fails with missing pooled audio source.
+- Placing the only BGM playback host under a transient scene while expecting music to survive that scene's unload: the playback authority must have an explicit longer lifetime.
+- Treating absence of a new BGM request as `StopBgm`: no request means preserve the current confirmed presentation.
 - Expecting mixer routing: current routing is metadata only; real `AudioMixer` binding is not implemented.
 - Expecting framework bootstrap: this package is independent and must be composed explicitly.
 - Adding `AudioListener` to cameras while the persistent listener is enabled: duplicates are reported and may be disabled by policy. Prefer listener ownership through `AudioRuntimeHost`.
