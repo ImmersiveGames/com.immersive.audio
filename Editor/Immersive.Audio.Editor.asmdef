@@ -2,7 +2,9 @@
   "name": "Immersive.Audio.Editor",
   "rootNamespace": "Immersive.Audio.Editor",
   "references": [
-    "Immersive.Audio.Unity"
+    "Immersive.Audio.Unity",
+    "Immersive.Audio.Runtime",
+    "Immersive.Pooling.Unity"
   ],
   "includePlatforms": [
     "Editor"
