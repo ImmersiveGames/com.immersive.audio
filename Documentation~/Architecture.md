@@ -1,5 +1,8 @@
 # Immersive Audio Architecture
 
+Status: Current
+Last updated: 2026-08-19
+
 This package is a standalone technical package for audio authoring and Unity audio services.
 
 ## Assembly Boundaries
@@ -15,17 +18,14 @@ Allowed here:
 - service interfaces that do not require Unity types;
 - package metadata.
 
-F2 added pure authoring support types here:
+Pure authoring/runtime support types include:
 
 - `AudioCueId`;
 - `AudioBusKey`;
 - `AudioBusKeys`;
 - `AudioLoopMode`;
 - `AudioPlaybackMode`;
-- `AudioAuthoringRanges`.
-
-F3 adds pure result/status types here:
-
+- `AudioAuthoringRanges`;
 - `AudioConfigurationStatus`;
 - `AudioConfigurationIssue`;
 - `AudioSettingsSnapshot`;
@@ -33,67 +33,45 @@ F3 adds pure result/status types here:
 - `AudioRoutingResolution`;
 - `AudioRoutingSource`;
 - `AudioListenerDuplicatePolicy`;
-- `AudioListenerHostReport`.
-
-F4 adds pure playback contracts:
-
+- `AudioListenerHostReport`;
 - `IAudioPlaybackHandle`;
 - `AudioPlaybackStatus`;
-- `AudioPlaybackResult`.
-
-F5 adds pure SFX execution intent:
-
+- `AudioPlaybackResult`;
 - `AudioSfxExecutionMode`.
 
 `Runtime/Services` may contain pure service contracts such as `IAudioSettingsService`. These contracts must not reference Unity assets or scene types.
 
 ### Runtime/Unity
 
-`Immersive.Audio.Unity` is the Unity adapter assembly. It may contain `ScriptableObject` authoring assets, future Unity-facing services, optional hosts, and emitter components.
+`Immersive.Audio.Unity` is the Unity adapter assembly. It contains `ScriptableObject` authoring assets, Unity-facing services, optional hosts, and emitter/playback components.
 
-This assembly references `Immersive.Audio.Runtime` and `Immersive.Pooling.Unity`. Pooling is used only for explicit pooled SFX. Logging can be added later only when a concrete service needs explicit diagnostics.
+This assembly references `Immersive.Audio.Runtime` and `Immersive.Pooling.Unity`. Pooling is used only for explicit pooled SFX.
 
-F2 added these authoring assets:
+Authoring assets:
 
 - `AudioCueAsset`: abstract base for explicit cue identity, clip, volume, pitch, loop mode, and routing bus.
-- `AudioSfxCueAsset`: SFX cue data for global/spatial playback, spatial tuning, voice budget, and retrigger cooldown.
-- `AudioBgmCueAsset`: BGM cue data for transition fades, with loop mode inherited from the base cue.
-- `AudioDefaultsAsset`: authoring defaults for volumes, bus keys, and fade values.
+- `AudioSfxCueAsset`: SFX cue data for global/spatial playback, execution mode, spatial tuning, voice budget, retrigger cooldown, and optional pooled source definition.
+- `AudioBgmCueAsset`: BGM cue data for loop mode and authored fade-in/fade-out values.
+- `AudioDefaultsAsset`: required runtime defaults for volumes, bus keys, and fallback fade values.
 
-These assets are data only. They do not play audio, create `AudioSource`, resolve services, or create runtime hosts.
+These assets are data only. They do not play audio, create runtime services, resolve framework lifecycle, or create global authorities.
 
-F3 adds Unity services and a listener host:
+Unity services and hosts:
 
 - `AudioSettingsService`: resolves `AudioSettingsSnapshot` from an explicit `AudioDefaultsAsset`.
 - `AudioRoutingResolver`: resolves SFX/BGM bus keys from cue data and explicit defaults.
-- `AudioListenerRuntimeHost`: component/runtime helper that ensures an `AudioListener` on a configured target or on the package-owned persistent listener object and reports duplicate listeners.
-
-These classes do not implement SFX playback, BGM playback, mixer binding, pooling, framework lifecycle, or service location.
-
-F4 adds direct playback Unity services:
-
-- `AudioGlobalSfxService`: direct SFX playback with controlled temporary `AudioSource` objects.
-- `AudioBgmService`: one dedicated BGM `AudioSource`, basic play/stop, cue loop mode, and simple fade in/out.
+- `AudioListenerRuntimeHost`: ensures an `AudioListener` on a configured target or on the explicit package-owned persistent listener object and reports duplicate listeners.
+- `AudioGlobalSfxService`: direct or explicitly pooled SFX playback.
+- `AudioBgmService`: one dedicated BGM `AudioSource`, provider-idempotent same-cue playback, controlled single-source cue transition, and explicit fade-to-silence stop.
 - `DirectAudioPlaybackHandle`: concrete Unity playback handle for direct playback.
-- `AudioRuntimeHost`: optional explicit composer for defaults, settings, routing, direct SFX, and BGM.
+- `PooledAudioPlaybackHandle`: pooled SFX handle that returns rented objects when playback stops or completes.
+- `AudioRuntimeHost`: optional explicit composer for defaults, settings, routing, SFX, BGM, and optional listener ownership.
 
-Playback failures return `AudioPlaybackResult` with explicit status and issues. The package must not use a hidden `NullAudioPlaybackHandle` or report a no-op handle as successful playback.
-
-F5 adds pooled SFX Unity integration:
-
-- `AudioSfxCueAsset.ExecutionMode` selects `Direct` or `Pooled`.
-- `AudioSfxCueAsset.PooledAudioSourcePool` points to the explicit `PoolDefinitionAsset` used for pooled SFX.
-- `AudioGlobalSfxService` accepts an optional explicit `IPoolService`.
-- `PooledAudioPlaybackHandle` returns rented objects to the pool when playback stops or finishes.
-- `AudioRuntimeHost` may receive a configured `PoolRuntimeHost` and inject its service into SFX playback.
-
-If pooled playback is requested without a configured pool service or pool definition, the service returns explicit failures such as `FailedMissingPoolService` or `FailedMissingPoolDefinition`. It must not silently play the cue through direct SFX.
-
-F6 does not change runtime architecture. It consolidates public usage documentation in `Documentation~/Audio-Usage-Guide.md` and keeps the QA clip repair flow outside the package runtime.
+Playback failures return `AudioPlaybackResult` with explicit status and issues. The package must not use a hidden null/no-op handle or report a no-op as successful playback.
 
 ### Editor
 
-`Immersive.Audio.Editor` is Editor-only. It may contain future inspectors, validators, and authoring tools. It must not contain runtime behavior required by player builds.
+`Immersive.Audio.Editor` is Editor-only. It may contain inspectors, validators, and authoring tools. It must not contain runtime behavior required by player builds.
 
 ## Prohibited Dependencies
 
@@ -102,8 +80,8 @@ Audio must not depend on:
 - `com.immersive.framework`;
 - `FrameworkRuntimeHost`;
 - `GameApplication`;
-- `Route` or `Activity`;
-- `FIRSTGAME` or QA project code;
+- Route or Activity lifecycle;
+- FIRSTGAME or QA project code;
 - old `DependencyManager`;
 - old `RuntimeModeConfig`;
 - old `PreferencesRuntime`;
@@ -114,78 +92,121 @@ Audio must not depend on:
 
 The package must not create a singleton, service locator, hidden bootstrap, or global dependency registry.
 
-Future services must be composed explicitly by the consuming project or by a framework adapter outside this package boundary. Required configuration must fail fast. Missing services must not be masked by silent fallback behavior.
+Services are composed explicitly by the consuming project or by an adapter outside this package boundary. Required configuration fails explicitly. Missing required services or assets must not be masked by silent fallback behavior.
 
 ## Explicit Configuration Policy
 
 `AUDIO-F-RULE-001 - Explicit Audio Configuration`:
 
 - `AudioDefaultsAsset` is required for settings and routing resolution.
-- Missing defaults must return `AudioConfigurationStatus.Failed` with an explicit issue.
+- Missing defaults return explicit failed settings/playback evidence.
 - Internal hardcoded values are allowed only as authoring ranges, Inspector initial values, and validation helpers.
 - Hardcoded values must not become runtime substitutes for missing required assets.
 
-F4 services preserve this rule: missing `AudioDefaultsAsset` produces `FailedMissingDefaults`; invalid settings produce `FailedInvalidSettings`; invalid routing produces `FailedInvalidRouting`.
+Playback preserves this rule: missing `AudioDefaultsAsset` produces `FailedMissingDefaults`; invalid settings produce `FailedInvalidSettings`; invalid routing produces `FailedInvalidRouting`.
 
 ## Listener Host Policy
 
 `AudioListenerRuntimeHost` owns listener safety for the Unity audio package. It supports two explicit modes:
 
-- scene-authored host: a component placed by the consuming project on a GameObject;
-- package-owned persistent host: created by `AudioRuntimeHost` when `Ensure Persistent Listener` is enabled.
+- scene-authored host: a component placed by the consuming project;
+- package-owned persistent listener: created by `AudioRuntimeHost` when `Ensure Persistent Listener` is enabled.
 
-The package-owned persistent listener is a narrow, explicit use of `DontDestroyOnLoad` for audio infrastructure only. It is not a service locator, does not expose a global playback service, and does not make `AudioRuntimeHost` itself persistent. Its purpose is to keep one valid `AudioListener` alive while cameras, routes, activities, or scenes are opened and closed.
+The package-owned persistent listener is a narrow, explicit use of `DontDestroyOnLoad` for listener infrastructure only. It is not a service locator, does not expose global playback authority, and does not make `AudioRuntimeHost` itself persistent.
 
-The listener host must not destroy duplicate listeners. Duplicate enabled listeners are reported by default. Disabling duplicates is allowed only when the component or `AudioRuntimeHost` policy is explicitly set to `DisableDuplicates`; `AudioRuntimeHost` defaults to `DisableDuplicates` for the package-owned persistent listener so camera-authored listeners do not compete with the audio root.
+The listener host does not destroy duplicate listeners. Duplicate enabled listeners are reported. Disabling duplicates is allowed only when the configured policy is `DisableDuplicates`; the package-owned persistent listener uses that policy by default.
 
 ## Pooling Policy
 
 Pooled SFX depends on `com.immersive.pooling` through explicit Unity composition. The audio package consumes `IPoolService` and `PoolDefinitionAsset`; it does not create a global pool, search for a pool service, use `Resources.Load`, or fall back to direct playback when pooled configuration is missing.
 
-`PoolDefinitionAsset` should point to a prefab with an `AudioSource`. Missing prefab/source or rent failures are surfaced as explicit `AudioPlaybackResult` failures. BGM does not use pooling.
+A pooled cue must have an explicit pool definition whose prefab contains an `AudioSource`. Missing pool service, pool definition, prefab source, rent, or return failures are surfaced as explicit `AudioPlaybackResult` failures. BGM does not use pooling.
 
 ## Runtime Host Policy
 
-`AudioRuntimeHost` is optional and explicit. It may create child GameObjects under itself to hold direct playback services and sources. It must not register global services, act as a singleton, or depend on framework lifecycle.
+`AudioRuntimeHost` is optional and explicit. It may create child GameObjects under its configured playback root to hold direct playback services and sources. It must not register global services, act as a singleton, or depend on framework lifecycle.
 
-By default, `AudioRuntimeHost` also ensures a package-owned persistent `AudioListener` through `AudioListenerRuntimeHost`. This makes listener availability independent from cameras. The persistent object is limited to listener ownership; playback services and game-specific BGM/SFX decisions remain scene/composition-owned.
+By default, `AudioRuntimeHost` can ensure a package-owned persistent `AudioListener`. This makes listener availability independent from camera lifetime. The persistent listener object is limited to listener ownership; BGM/SFX playback authority and game-specific intent remain composition-owned.
 
-For applications that require BGM continuity while transient scenes are loaded or unloaded, the consuming project or framework adapter must compose the `AudioRuntimeHost` under an explicit lifetime that survives those scene changes. The package must not make that host persistent implicitly.
+`AudioRuntimeHost` intentionally does not call `DontDestroyOnLoad` for itself. If BGM must survive transient scene unload/load, the consuming project or framework adapter must place the host under an explicit application/session/persistent-content lifetime that outlives those scenes.
 
 ## BGM Continuity Policy
 
-`AUDIO-F-RULE-002 - Sticky Confirmed BGM Presentation` defines the required continuity contract for BGM orchestration built on this package.
+`AUDIO-F-RULE-002 - Sticky Confirmed BGM Presentation` defines the current BGM continuity contract.
 
-The package owns physical BGM playback and transition behavior. It does not own Route, Activity, game-flow, or other framework lifecycle semantics. A consumer may publish higher-level BGM intentions, but those concepts must remain outside the audio package boundary.
+The audio package owns physical BGM playback and transition behavior. It does not own Route, Activity, game-flow, or other higher-level lifecycle semantics.
 
-For a continuity-capable composition:
+For continuity-capable composition:
 
-- once a BGM cue is successfully playing, it remains the current presentation until an explicit request changes it or explicitly requests silence/stop;
-- absence of a new BGM request means `NoChange`; it must not be interpreted as silence, stop, clear, or fallback;
-- destruction or exit of the gameplay object, Route, Activity, or scene that originally caused the request must not by itself stop the confirmed BGM when the playback authority remains alive;
-- requesting the same already-confirmed cue must preserve playback without restart or other unnecessary provider mutation;
-- requesting a different cue must perform a controlled BGM transition rather than an abrupt stop caused only by owner or scene lifetime;
-- explicit silence/stop is the only semantic request that transitions an active BGM to silence;
-- when a consumer requires continuity across scene unloads, the playback authority that owns `AudioBgmService` and its `AudioSource` must outlive those transient scenes through explicit composition.
+- once a cue is successfully playing, it remains the physical presentation until an explicit later `Play` or `Stop` changes it;
+- absence of a new higher-level request means no provider call and therefore no physical mutation;
+- requesting the same cue is provider-idempotent and succeeds without restarting the clip or resetting playback position;
+- requesting a different cue performs a controlled single-source transition: the current cue fades out, the source is reconfigured, and the next cue fades in;
+- explicit `Stop` transitions the current cue to silence using its fade-out/default fade and then clears playback state;
+- owner exit, object destruction, or transient scene unload must not be translated by an adapter into an implicit `Stop`;
+- continuity across scene lifetime requires the `AudioRuntimeHost` / `AudioBgmService` authority to outlive those transient scenes through explicit composition.
 
-These semantics distinguish three higher-level intentions even if the exact public API is defined by a later cut:
+Higher-level orchestration should distinguish:
 
 ```text
-Unspecified / No Request -> preserve current confirmed BGM
+Unspecified / No Request -> no provider mutation; preserve physical playback
 Play(cue)                -> apply or transition to the requested cue
 Silence / Stop           -> transition explicitly to silence
 ```
 
-`null`, missing authoring, owner exit, or absence of a higher-level binding must not be silently promoted to `Silence` by an adapter.
+`null`, missing authoring, owner exit, or absence of a higher-level binding must not be silently promoted to `Stop` by an adapter.
 
-### Current implementation limitation
+### Current implementation
 
-F4 `AudioBgmService` provides one dedicated `AudioSource`, direct `Play`/`Stop`, and basic fade in/out. It does not yet certify the full sticky continuity contract above, including seamless cue-to-cue transition behavior across transient scene lifetimes. This contract is therefore a required target for the next BGM continuity runtime cut and must be proven by QA before it is considered implemented.
+`AudioBgmService` uses one dedicated `AudioSource`.
+
+Same-cue behavior:
+
+```text
+Play(A) while A is active
+  -> Succeeded
+  -> no source restart
+  -> playback position preserved
+```
+
+Different-cue behavior:
+
+```text
+A playing
+  -> Play(B)
+  -> A remains playing while fade-out begins
+  -> source reaches zero
+  -> source is reconfigured to B
+  -> B starts and fades in
+```
+
+This is a sequential single-source fade-out/switch/fade-in transition. It is not a simultaneous dual-source crossfade.
+
+`ActiveCue` represents the latest explicit target. During a cue-to-cue transition the physical source may still be finishing the previous cue for a short time.
+
+`Stop()` accepts explicit silence immediately as an operation result, keeps the current source alive during the configured fade-out, then stops and clears the source when the fade completes.
+
+### Certification status
+
+BGM-CONTINUITY-1 is implemented and technically certified by the external QAFramework integration surface on 2026-08-19.
+
+Certified physical provider cases:
+
+```text
+same-cue-no-restart                  PASS
+different-cue-no-abrupt-cut          PASS
+different-cue-transition-completes  PASS
+explicit-stop-fades-to-silence       PASS
+```
+
+The same QA run closed `30/30` across Core Audio, Framework BGM semantics, ADR-013A rejection/retry behavior, and physical continuity. A real Framework Route A -> Route B lifecycle transition with an explicitly persistent audio authority and no new BGM request also completed successfully while the BGM remained playing.
+
+This evidence certifies the provider behavior used by that integration. Higher-level Route/Activity sticky intent semantics remain owned by the consuming framework, not by this package.
 
 ## Mixer Policy
 
-F4 routing is resolved metadata only. Unity `AudioMixer` binding is intentionally deferred until a dedicated routing/mixer cut defines the public authoring language and failure behavior.
+Routing is currently resolved metadata only. Unity `AudioMixer` binding remains deferred until a dedicated mixer/routing cut defines the public authoring language and failure behavior.
 
 ## Old AudioRuntime Policy
 
-The old GameJam AudioRuntime is reference-only. Its concepts may inform future cuts, but its composer, installer, sample assets, QA harness, global DI usage, and runtime architecture must not be copied into this package.
+The old GameJam AudioRuntime is reference-only. Its composer, installer, sample assets, QA harness, global DI usage, and runtime architecture must not be copied into this package.
