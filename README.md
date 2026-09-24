@@ -7,10 +7,10 @@ The package is independent from `com.immersive.framework`. Framework code may co
 ## Installation
 
 Configure OpenUPM for the `com.immersive` scope and add
-`com.immersive.audio` version `0.2.2` to `Packages/manifest.json`. Unity resolves
-`com.immersive.pooling@0.2.1` automatically from the same registry.
+`com.immersive.audio` version `0.2.3` to `Packages/manifest.json`. Unity resolves
+`com.immersive.pooling@0.2.2` automatically from the same registry.
 
-Git fallback: `https://github.com/ImmersiveGames/com.immersive.audio.git#v0.2.2`.
+Git fallback: `https://github.com/ImmersiveGames/com.immersive.audio.git#v0.2.3`.
 
 ## Scope
 
