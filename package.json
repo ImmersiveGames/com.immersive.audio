@@ -1,14 +1,20 @@
 {
   "name": "com.immersive.audio",
   "displayName": "Immersive Audio",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Unity audio services and authoring primitives for Immersive packages.",
+  "license": "MIT",
+  "licensesUrl": "https://github.com/ImmersiveGames/com.immersive.audio/blob/main/LICENSE.md",
+  "documentationUrl": "https://github.com/ImmersiveGames/com.immersive.audio#readme",
+  "changelogUrl": "https://github.com/ImmersiveGames/com.immersive.audio/blob/main/CHANGELOG.md",
   "author": {
-    "name": "Immersive Games"
+    "name": "Immersive Games",
+    "url": "http://www.immersivegame.com.br",
+    "email": "contato@immersivegames.com.br"
   },
   "unity": "6000.5",
   "unityRelease": "0f1",
   "dependencies": {
-    "com.immersive.pooling": "0.2.0"
+    "com.immersive.pooling": "0.2.1"
   }
 }

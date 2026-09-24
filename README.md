@@ -4,6 +4,14 @@
 
 The package is independent from `com.immersive.framework`. Framework code may consume Audio later, but Audio must not know framework hosts, routes, activities, game flow, QA projects, or old Base 2.0 composition.
 
+## Installation
+
+Configure OpenUPM for the `com.immersive` scope and add
+`com.immersive.audio` version `0.2.2` to `Packages/manifest.json`. Unity resolves
+`com.immersive.pooling@0.2.1` automatically from the same registry.
+
+Git fallback: `https://github.com/ImmersiveGames/com.immersive.audio.git#v0.2.2`.
+
 ## Scope
 
 Current cut: `POST-RESET-F6 - Audio Usage Guide / Docs Consolidation + QA Builder Cleanup`.
@@ -85,3 +93,7 @@ If a cue requests pooled playback and no pool service or pool definition is avai
 - No BGM pooling.
 - No GameJam sample assets.
 - No custom inspector.
+
+## License
+
+Licensed under the [MIT License](LICENSE.md).
