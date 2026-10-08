@@ -68,6 +68,7 @@ jobs:
         id: archive
         shell: bash
         run: |
+          set -euo pipefail
           shopt -s nullglob
           archives=("$DIST_DIR"/*.tgz "$DIST_DIR"/*.tar.gz)
           if [ "${#archives[@]}" -ne 1 ]; then
@@ -76,13 +77,63 @@ jobs:
           fi
 
           archive="${archives[0]}"
-          tar -tzf "$archive" | grep -qx 'package/package.json'
-          tar -tzf "$archive" | grep -qx 'package/.attestation.p7m'
+          if ! archive_listing="$(tar -tzf "$archive")"; then
+            printf 'Unable to list signed archive: %s\n' "$archive" >&2
+            exit 1
+          fi
 
-          archive_name="$(tar -xOzf "$archive" package/package.json | jq -r '.name')"
-          archive_version="$(tar -xOzf "$archive" package/package.json | jq -r '.version')"
-          test "$archive_name" = "$PACKAGE_NAME"
-          test "$archive_version" = "$PACKAGE_VERSION"
+          has_archive_entry() {
+            local expected="$1"
+            local entry
+            while IFS= read -r entry; do
+              if [ "$entry" = "$expected" ]; then
+                return 0
+              fi
+            done <<< "$archive_listing"
+            return 1
+          }
+
+          if ! has_archive_entry 'package/package.json'; then
+            printf 'Signed archive is missing required entry: package/package.json\n' >&2
+            exit 1
+          fi
+          if ! has_archive_entry 'package/.attestation.p7m'; then
+            printf 'Signed archive is missing required entry: package/.attestation.p7m\n' >&2
+            exit 1
+          fi
+          if ! attestation_size="$(tar -xOzf "$archive" package/.attestation.p7m | wc -c)"; then
+            printf 'Unable to extract signature attestation from signed archive\n' >&2
+            exit 1
+          fi
+          attestation_size="${attestation_size//[[:space:]]/}"
+          case "$attestation_size" in
+            ''|*[!0-9]*) printf 'Invalid signature attestation size: %s\n' "$attestation_size" >&2; exit 1 ;;
+          esac
+          if [ "$attestation_size" -eq 0 ]; then
+            printf 'Signed archive has an empty signature attestation\n' >&2
+            exit 1
+          fi
+
+          if ! archive_json="$(tar -xOzf "$archive" package/package.json)"; then
+            printf 'Unable to extract package/package.json from signed archive\n' >&2
+            exit 1
+          fi
+          if ! archive_name="$(jq -er '.name | strings' <<< "$archive_json")"; then
+            printf 'Signed archive has invalid package name metadata\n' >&2
+            exit 1
+          fi
+          if ! archive_version="$(jq -er '.version | strings' <<< "$archive_json")"; then
+            printf 'Signed archive has invalid package version metadata\n' >&2
+            exit 1
+          fi
+          if [ "$archive_name" != "$PACKAGE_NAME" ]; then
+            printf 'Package name mismatch: expected %s, found %s\n' "$PACKAGE_NAME" "$archive_name" >&2
+            exit 1
+          fi
+          if [ "$archive_version" != "$PACKAGE_VERSION" ]; then
+            printf 'Package version mismatch: expected %s, found %s\n' "$PACKAGE_VERSION" "$archive_version" >&2
+            exit 1
+          fi
           echo "path=$archive" >> "$GITHUB_OUTPUT"
           printf 'Signed archive: %s\n' "$(basename "$archive")"
 
