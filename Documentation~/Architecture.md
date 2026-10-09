@@ -188,7 +188,7 @@ This is a sequential single-source fade-out/switch/fade-in transition. It is not
 
 ### Certification status
 
-BGM-CONTINUITY-1 is implemented and technically certified by the external QAFramework integration surface on 2026-08-19.
+The package-local BGM provider evidence below is historical: BGM-CONTINUITY-1 was certified by the former external QAFramework integration surface on 2026-08-19. The former Audio QA harness and its Hub/assets were later removed. Do not use the historical result as a current run procedure or as a certification of later Framework integration changes.
 
 Certified physical provider cases:
 
@@ -201,7 +201,9 @@ explicit-stop-fades-to-silence       PASS
 
 The same QA run closed `30/30` across Core Audio, Framework BGM semantics, ADR-013A rejection/retry behavior, and physical continuity. A real Framework Route A -> Route B lifecycle transition with an explicitly persistent audio authority and no new BGM request also completed successfully while the BGM remained playing.
 
-This evidence certifies the provider behavior used by that integration. Higher-level Route/Activity sticky intent semantics remain owned by the consuming framework, not by this package.
+This historical evidence covered the provider behavior in that integration at that time. Higher-level Route/Activity sticky intent semantics remain owned by the consuming framework, not by this package.
+
+The current post-IF-ADR-040 Framework integration evidence is [QA-NEW-005 certification](https://github.com/rinnocenti/IMmersiveFramework/blob/55c30d477c58432ffc3a6dcf3194020620e82070/Documentation~/QA-NEW-005-Certification.md), executed on 2026-10-03 with **12/12 Play Mode cases passing**. It covers Session-scoped director composition, Route/Activity binding and release, request flow, startup Activity resolution, and cleanup. It verifies public logical/provider-confirmed integration state. It explicitly does not certify physical playback, fade/crossfade timing, provider internals, or case-for-case equivalence with the former 30/30 run. This is external integration evidence, not a package-local test suite.
 
 ## Mixer Policy
 

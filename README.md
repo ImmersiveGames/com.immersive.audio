@@ -6,39 +6,25 @@ The package is independent from `com.immersive.framework`. Framework code may co
 
 ## Installation
 
-Configure OpenUPM for the `com.immersive` scope and add
-`com.immersive.audio` version `0.2.3` to `Packages/manifest.json`. Unity resolves
-`com.immersive.pooling@0.2.2` automatically from the same registry.
-
-Git fallback: `https://github.com/ImmersiveGames/com.immersive.audio.git#v0.2.3`.
-
-## Scope
-
-Current cut: `POST-RESET-F6 - Audio Usage Guide / Docs Consolidation + QA Builder Cleanup`.
-
-This cut keeps the F5 runtime shape and consolidates usage documentation. It does not implement framework bootstrap, service location, mixer binding, or old composer/installer behavior.
-
-## Reference Source
-
-The old `GameJam2025/Assets/_ImmersiveGames/NewScripts/AudioRuntime` tree is reference-only. Do not copy its assets, prefabs, composer, installer, QA scenes, or runtime architecture into this package without an explicit migration cut.
+Use the package source already configured by the consuming project. Resolve the installed Audio and Pooling versions from `Packages/manifest.json` and `packages-lock.json`; this README does not prescribe versions for discovery.
 
 ## Dependencies
 
-The package depends on `com.immersive.pooling` for pooled SFX support in the Unity assembly. `Immersive.Audio.Runtime` remains pure and does not reference Unity or pooling concrete types. Logging is still deferred.
-
-## Roadmap
-
-- F1 - Package skeleton and boundaries.
-- F2 - Authoring assets.
-- F3 - Settings, routing, and listener policy.
-- F4 - Direct SFX and basic BGM.
-- F5 - Pooled SFX integration through `com.immersive.pooling`.
-- F6 - Usage guide, docs consolidation, and QA builder cleanup.
-- F7 - Future documentation refinements, if needed.
+The package depends on `com.immersive.pooling` for pooled SFX support in the Unity assembly. `Immersive.Audio.Runtime` remains pure and does not reference Unity or pooling concrete types. Audio does not depend on the Logging package.
 
 ## Usage Guide
 
-Start with `Documentation~/Audio-Usage-Guide.md` for practical setup steps, direct SFX, pooled SFX, BGM, explicit failure handling, QA harness usage, and common configuration errors.
+Start with the [Audio Usage Guide](Documentation~/Audio-Usage-Guide.md) for setup steps, direct SFX, pooled SFX, BGM, explicit failure handling, current QA path, and common configuration errors. [Architecture](Documentation~/Architecture.md) is the supporting contract for ownership, lifecycle, mixer limits, and dated certification evidence.
+
+## Find a capability
+
+| Intent | Procedure/API | Validation |
+|---|---|---|
+| Author cue/default assets and configure settings | [Usage Guide: authoring and settings](Documentation~/Audio-Usage-Guide.md#4-audiodefaultsasset) | Asset validation and explicit `AudioSettingsResolution` |
+| Play direct or pooled SFX | [Direct SFX](Documentation~/Audio-Usage-Guide.md#9-direct-sfx), [Pooled SFX](Documentation~/Audio-Usage-Guide.md#10-pooled-sfx) | Inspect `AudioPlaybackResult`; pooled path requires explicit Pooling composition |
+| Play, transition, or explicitly stop BGM | [BGM procedure](Documentation~/Audio-Usage-Guide.md#11-bgm) | Inspect result and use the documented QA evidence; QA-NEW-005 does not test physical fades |
+| Ensure a listener and choose playback ownership | [Listener/host](Documentation~/Audio-Usage-Guide.md#7-audioruntimehost), [Architecture](Documentation~/Architecture.md) | `AudioListenerHostReport`, explicit host lifetime |
+| Understand failures, unsupported behavior, and QA scope | [Failures and QA](Documentation~/Audio-Usage-Guide.md#12-explicit-failures), [Certification evidence](Documentation~/Architecture.md#certification-status) | QA scope and observable limits stated in the guide |
 
 ## Authoring API
 
@@ -51,6 +37,8 @@ Start with `Documentation~/Audio-Usage-Guide.md` for practical setup steps, dire
 `AudioDefaultsAsset` stores project-level authoring defaults for master/SFX/BGM volume, routing bus keys, and default fade values.
 
 The pure runtime assembly contains small value objects and enums used by authoring: `AudioCueId`, `AudioBusKey`, `AudioBusKeys`, `AudioLoopMode`, `AudioPlaybackMode`, and `AudioAuthoringRanges`.
+
+The public pure contracts also include `IAudioSettingsService`, `IAudioSfxService`, `IAudioBgmService`, `IAudioPlaybackHandle`, `AudioSettingsResolution`/`AudioSettingsSnapshot`, `AudioRoutingResolution`, `AudioPlaybackResult`/`AudioPlaybackStatus`, and `AudioConfigurationIssue`. The Unity adapter supplies `AudioSettingsService`, `AudioRoutingResolver`, `AudioGlobalSfxService`, `AudioBgmService`, the cue/default assets, listener/runtime hosts, and direct/pooled playback handles. See the [Usage Guide](Documentation~/Audio-Usage-Guide.md) for composition and the [Architecture contract](Documentation~/Architecture.md) for assembly ownership and limits.
 
 ## Settings And Routing
 
@@ -82,7 +70,7 @@ If a cue requests pooled playback and no pool service or pool definition is avai
 
 `AudioRuntimeHost` is an optional explicit Unity component. It receives `AudioDefaultsAsset`, may receive an explicit `PoolRuntimeHost`, composes `AudioSettingsService`, `AudioRoutingResolver`, `AudioGlobalSfxService`, and `AudioBgmService`, ensures a persistent listener by default, and exposes simple manual `PlaySfx`, `PlayBgm`, and `StopBgm` methods.
 
-## F5 Limits
+## Current limits
 
 - No AudioMixer binding.
 - No framework bootstrap.
@@ -92,7 +80,7 @@ If a cue requests pooled playback and no pool service or pool definition is avai
 - No automatic pool creation or global pool lookup.
 - No BGM pooling.
 - No GameJam sample assets.
-- No custom inspector.
+- Editor custom inspectors support the existing cue/default/host authoring assets; they do not add a mixer authoring surface.
 
 ## License
 

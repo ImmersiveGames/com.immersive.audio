@@ -255,45 +255,11 @@ Common statuses:
 
 There is no null/no-op playback handle reported as success.
 
-## 13. QA Harness and Certification
+## 13. QA and certification evidence
 
-The canonical QA harness lives outside this package in QAFramework:
+The former `Assets/ImmersiveFrameworkQA/Audio` harness, its Hub, assets, and menu commands were removed. Do not use the old `Configure Audio QA` / `Run All Audio QA` procedure.
 
-```text
-Assets/ImmersiveFrameworkQA/Audio
-```
-
-Use the Framework entry path rather than opening `QA_Audio.unity` as a standalone runtime entrypoint:
-
-1. Run `Immersive Framework -> QA -> Setup -> Audio -> Configure Audio QA`.
-2. For setup-idempotence checks, run the same setup a second time.
-3. Enter Play Mode through the normal Framework bootstrap.
-4. From `QA Hub`, request `Audio QA`.
-5. Run `Run All Audio QA`.
-
-BGM-CONTINUITY-1 certification recorded on 2026-08-19:
-
-```text
-Core Audio         7/7 PASS
-Framework BGM     14/14 PASS
-ADR-013A            5/5 PASS
-Audio continuity    4/4 PASS
-TOTAL              30/30 PASS
-FAILED               0
-```
-
-Physical continuity cases:
-
-```text
-same-cue-no-restart                  PASS
-different-cue-no-abrupt-cut          PASS
-different-cue-transition-completes  PASS
-explicit-stop-fades-to-silence       PASS
-```
-
-The same QA composition also proved a real Framework Route A -> Route B transition where the persistent audio authority remained in Framework Persistent Content, Route B published no BGM request, and the already-playing BGM continued across the scene/lifecycle change.
-
-That lifecycle semantic belongs to the Framework adapter; the provider behavior it relies on is implemented here.
+The current external QA-NEW-005 integration evidence, its **12/12 Play Mode result from 2026-10-03**, the setup/run entry, and its observability limits are recorded in [Architecture certification status](Architecture.md#certification-status). This is Framework integration evidence, not an Audio package test suite. QA-NEW-005 does **not** verify physical playback or fade/crossfade behavior. The historical BGM-CONTINUITY-1 result and scope are preserved separately in that same record. No QA execution is claimed by this guide itself.
 
 ## 14. Setup Checklist
 
