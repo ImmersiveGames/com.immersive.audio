@@ -2,6 +2,11 @@
 
 All notable changes to this package are documented in this file.
 
+## [0.2.4] - 2026-10-09
+
+- Standardized capability discovery and SFX/BGM usage and QA evidence documentation.
+- No public API or runtime behavior changes.
+
 ## [0.2.3] - 2026-09-24
 
 - Added signed Unity UPM release distribution through GitHub Releases and OpenUPM.
